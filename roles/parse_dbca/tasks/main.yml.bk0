@@ -1,0 +1,40 @@
+---
+####################################################################
+## Parse Oracle Database Configuration Assistant files
+####################################################################
+
+- name: DBCA variable definition
+  ansible.builtin.debug:
+    msg:
+      - "DBCA var definition: {{ dbca }}"
+
+- name: DBCA check dbca.gdbName
+  fail:
+    msg: "DBCA Error - check dbca.gdbName. Global database name of the database must exist and cannot be blank!"
+  when: dbca["gdbName"] is not defined or dbca["gdbName"] == ""
+
+- name: Create DBCA config file
+  template:
+    src: templates/dbca_auto.j2
+    dest: "{{ oracleuser_home }}/dbca_auto.rsp"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_install_group }}"
+    mode: 0775
+  with_items:
+    - "{{ dbca }}"
+
+- name: "DB check db.oracle_install_option"
+  fail:
+    msg: "DBCA Error - check dbca.oracle_install_option. Valid options are: INSTALL_DB_SWONLY | INSTALL_DB_AND_CONFIG"
+  when: db['oracle_install_option'] is not defined or (db['oracle_install_option'] != 'INSTALL_DB_SWONLY' and  db['oracle_install_option'] != 'INSTALL_DB_AND_CONFIG')
+
+- name: Create DB config file
+  template:
+    src: templates/db_auto.j2
+    dest: "{{ oracleuser_home }}/db_auto.rsp"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_install_group }}"
+    mode: 0775
+  with_items:
+    - "{{ db }}"
+...

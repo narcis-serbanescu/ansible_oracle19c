@@ -1,0 +1,10 @@
+---
+- name: Cleanup files
+  ansible.builtin.file:
+    path: "{{ oracleuser_home }}/{{ item }}"
+    state: absent
+  loop:
+    - db_auto.rsp
+    - dbca_auto.rsp
+    - oracle_pdbuser.sql
+...

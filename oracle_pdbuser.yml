@@ -1,0 +1,91 @@
+---
+- name: Create Oracle PDB user
+  hosts: rhel79ora
+  remote_user: oracle
+  vars_files:
+    - ./vars/oracle_vars.yml
+
+  tasks:
+    - name: Deploy Create user SQL script
+      template:
+        src: roles/post_install/templates/oracle_pdbuser.sql.j2
+        dest: "{{ oracleuser_home }}/oracle_pdbuser.sql"
+        owner: "{{ oracle_user }}"
+        group: "{{ oracle_group }}"
+      
+    - name: Deploy Drop user SQL script
+      template:
+        src: roles/post_install/templates/drop_oracle_pdbuser.sql.j2
+        dest: "{{ oracleuser_home }}/drop_oracle_pdbuser.sql"
+        owner: "{{ oracle_user }}"
+        group: "{{ oracle_group }}"
+      
+    - name: Set sys password
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+      register: ora_dbuser
+      loop:
+        - 'alter user sys identified by {{ syspass }};'
+
+    - name: List PDBs
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+      register: ora_pdbs
+      loop:
+        - 'show pdbs;'
+
+    - name: Display PDBs
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ ora_pdbs.results | map(attribute='stdout_lines')|list }}"
+      when: pdb_name not in ora_pdbs.results | map(attribute='stdout_lines')|list
+
+    - name: Starting PDB
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus sys/{{ syspass }}@{{ ansible_hostname }}:{{ portnum }}/{{ pdb_name }} as sysdba
+      register: pdb_start
+      loop:
+        - 'alter session set container={{ pdb_name }};'
+        - 'alter pluggable database {{ pdb_name }} open;'
+
+    - name: Display PDB status
+      debug:
+        msg: "{{ pdb_start }}"
+
+    - name: List PDB users
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus sys/{{ syspass }}@{{ ansible_hostname }}:{{ portnum }}/{{ pdb_name }} as sysdba
+      register: ora_pdbusers
+      loop:
+        - 'select username from dba_users;'
+
+    - name: Display existing PDB Oracle user status
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ ora_pdbusers.results | map(attribute='stdout_lines') | list }}"
+      when: oracle_dbuser not in ora_pdbusers.results | map(attribute='stdout_lines')|list
+
+    - name: New Oracle PDB user
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus sys/{{ syspass }}@{{ ansible_hostname }}:{{ portnum }}/{{ pdb_name }} as sysdba
+      loop:
+        - "@{{ oracleuser_home }}/oracle_pdbuser.sql;"
+      register: new_orauser
+      when: oracle_dbuser not in ora_pdbusers.results | map(attribute='stdout_lines')|list
+
+    - name: Display sql output
+      debug:
+        msg: "{{ new_orauser }}"
+
+    - name: Connect as new Oracle user
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus {{ oracle_dbuser }} as sysdba
+      register: ora_dbuser_conn
+      loop:
+        - '{{ oracle_dbpwd }}";'
+
+    - name: Connect as new Oracle PDB user
+      shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus {{ oracle_dbuser }}/{{ oracle_dbpwd }}@{{ ansible_hostname }}:1521/{{ pdb_name }} as sysdba
+      register: ora_pdbuser_conn
+      loop:
+        - 'select * from user_role_privs;'
+        - 'show pdbs;'
+
+    - name: Display new Oracle PDB user status
+      debug:
+        var: ora_pdbuser_conn
+...

@@ -1,0 +1,49 @@
+---
+####################################################################
+## Prechecks before installation
+####################################################################
+
+- name: Get the username running this
+  become: false
+  command: whoami
+  register: whoami_on_host
+
+- name: Display whoami
+  debug:
+    var: whoami_on_host.stdout_lines
+
+- name: Check if required packages are installed or not
+  package:
+    name: "{{ item }}"
+    state: present
+  check_mode: true
+  loop: "{{ package_names }}"
+  register: package_check
+
+- name: Display package info
+  debug:
+    var: package_check
+
+#- name: Required packages
+#  debug:
+#    msg: "Package {{ item }} is missing."
+#  loop: package_check
+#  when: package_check is installed
+
+# - name: Check if listed package is installed or not on Red Hat Linux family
+#   command: rpm -q "{{ item }}"
+#   loop: "{{ package_names }}"
+#   register: package_check
+#   when: ansible_facts['os_family'] == "RedHat"
+#   ignore_errors: yes
+# #  command_warnings: false
+# - name: Print Error message
+#   debug: var=package_check
+# - name: Print execution results
+#   debug:
+#     msg: "Package is installed"
+#   when: package_check is succeeded
+# - name: Print required packaged
+#   debug:
+#     msg: "Package is not installed"
+#   when: package_check is not succeeded

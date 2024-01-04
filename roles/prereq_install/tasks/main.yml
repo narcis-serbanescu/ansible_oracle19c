@@ -1,0 +1,7 @@
+---
+- name: Oracle user settings
+  include_tasks: oracle_user.yml
+
+- name: Oracle system prereq
+  include_tasks: oracle_prereq.yml
+...

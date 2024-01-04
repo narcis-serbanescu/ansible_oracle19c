@@ -1,0 +1,37 @@
+---
+
+- name: Install Oracle 19c
+  hosts: rhel79ora
+  # remote_user: oracle
+  vars_files:
+    - ./vars/oracle_vars.yml
+  vars:
+    option_prepare_dbca: true
+    option_copy_oracle: true
+    option_create_cdb: true
+    option_create_pdb: true
+    option_do_cleanup: true
+  pre_tasks:
+    - ansible.builtin.debug:
+        msg:
+          - "Actions to be performed:"
+          - "- Check Oracle prerequisites: True"
+          - "- Prepare Oracle Database installation files: {{ option_prepare_dbca }}"
+          - "- Copy Oracle instance binaries: {{ option_copy_oracle }}"
+          - "- Do cleanup: {{ option_do_cleanup }}"
+  roles:
+    - role: prereq_install
+      become: true
+    - role: prereq_check
+      remote_user: oracle
+    - role: parse_dbca
+      remote_user: oracle
+      when: option_prepare_dbca == true
+    - role: copy_oracle_19c
+      remote_user: oracle
+      when: option_copy_oracle == true
+    - role: orainst_root
+      become: true
+    - role: do_cleanup
+      when: option_do_cleanup == true
+...

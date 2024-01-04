@@ -1,0 +1,12 @@
+alter session set "_oracle_script"=true;
+alter session set container={{ pdb_name }};
+alter pluggable database {{ pdb_name }} open;
+CREATE USER {{ oracle_pdbuser }}
+  IDENTIFIED BY {{ oracle_pdbpwd }}
+  container=current;
+GRANT CONNECT, RESOURCE to {{ oracle_pdbuser }} container=current;
+GRANT CREATE SESSION, SYSOPER, CREATE PLUGGABLE DATABASE TO {{ oracle_pdbuser }} CONTAINER=current;
+GRANT PDB_DBA, DBA to {{ oracle_pdbuser }} container=current;
+GRANT SYSDBA to {{ oracle_pdbuser }} container=current;
+alter user {{ oracle_pdbuser }} set container_data=all for cdb_pdbs container=current;
+

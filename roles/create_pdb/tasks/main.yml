@@ -1,0 +1,85 @@
+---
+# Create Oracle 19c pluggable database
+
+- name: Validate Oracle database software is installed
+  stat:
+    path: "{{ oracle_home }}/bin/sqlplus"
+  register: sqlplus
+
+- name: Display information
+  debug:
+    msg: "Oracle database software is installed here: {{oracle_home }}"
+  when: sqlplus.stat.exists
+
+- name: Start DB
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: sqlplus_start
+  loop:
+    - 'startup;'
+
+- name: Use Oracle Managed files method
+  remote_user: "{{ oracle_user }}"
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: sqlplus_pdbalter
+  with_items:
+    - 'ALTER SYSTEM SET db_create_file_dest = "{{ dbfile_path }}";'
+
+- name: Create PDB
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: sqlplus_pdbvalidate
+  with_items:
+    - 'CREATE PLUGGABLE DATABASE {{ pdb_name }} ADMIN USER {{ pdb_admin }} IDENTIFIED BY "{{ pdb_password }} ROLES=(DBA)";'
+
+- name: Display PDB debug message if creation fails
+  debug:
+    msg: "{{ item }}"
+  with_items: "{{ sqlplus_pdbvalidate.results|map(attribute='stdout')|list }}"
+  when: sqlplus_pdbvalidate.results is not search("Pluggable database created.")
+
+- name: Check PDB creation status
+  debug:
+    msg: "PDB {{ pdb_name }} was created successfully!"
+  when: sqlplus_pdbvalidate.results is search("Pluggable database created.")
+
+- name: Open PDB
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: sqlplus_pdbvalidate
+  with_items:
+    - ALTER PLUGGABLE DATABASE {{ pdb_name }}  OPEN INSTANCES=ALL;
+
+- name: Display PDB debug message if open failes
+  debug:
+    msg: "{{ item }}"
+  with_items: "{{ sqlplus_pdbvalidate.results|map(attribute='stdout')|list }}"
+  when: sqlplus_pdbvalidate.results is not search("Pluggable database altered.")
+
+- name: Check PDB open status
+  debug:
+    msg: "PDB {{ pdb_name }} was successfully opened!"
+  when: sqlplus_pdbvalidate.results is search("Pluggable database altered.")
+
+- name: Deploy tnsnames.ora
+  template:
+    src: tnsnames.ora.j2
+    dest: "{{ oracle_home }}/network/admin/tnsnames.ora"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: 0644
+
+#- name: Check PDB status
+#  remote_user: "{{ oracle_user }}"
+#  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+#  register: sqlplus_pdbvalidate
+#  with_items:
+#    - SELECT OPEN_MODE FROM gv$pdbs WHERE NAME={{ pdb_name | quote }};
+
+#- name: Display PDB debug message if get status fails
+#  debug: msg="{{ item }}"
+#  with_items: "{{ sqlplus_pdbvalidate.results|map(attribute='stdout')|list }}"
+#  when: sqlplus_pdbvalidate.results is not search("READ WRITE")
+
+#- name: Check PDB open status
+#  debug:
+#    msg: "PDB {{ pdb_name }} has OPEN_MODE = READ WRITE!"
+#  when: sqlplus_pdbvalidate.results is search("READ WRITE")
+...

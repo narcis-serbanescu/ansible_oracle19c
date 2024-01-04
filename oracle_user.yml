@@ -1,0 +1,38 @@
+---
+- name: Add oracle user and groups
+  hosts: rhel79ora
+  become: true
+  vars:
+    - ora_groups:
+        - oinstall
+        - dba
+        - backupdba
+  vars_files: vars/oracle_vars.yml
+
+  tasks:
+    - name: Create oracle groups
+      group:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ ora_groups }}"
+
+    - name: Create oracle user
+      user:
+        name: oracle
+        append: true
+        groups: "{{ item }}"
+      loop: "{{ ora_groups }}"
+
+    - name: Deploy ssh_key
+      authorized_key:
+        user: oracle
+        state: present
+        key: "{{ lookup('file', '/home/snarcis/.ssh/id_rsa.pub') }}"
+        manage_dir: true
+
+    - name: Install required packages
+      yum:
+        name: "{{ package_names }}"
+        state: present
+
+...

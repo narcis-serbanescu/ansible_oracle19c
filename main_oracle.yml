@@ -1,0 +1,49 @@
+---
+
+- name: Install Oracle 19c
+  hosts: rhel79ora
+  remote_user: oracle
+#  vars_files:
+#    - ./vars/oracle_vars.yml
+  vars:
+    option_prepare_dbca: true
+    option_copy_oracle: true
+    option_create_cdb: true
+    option_create_pdb: true
+    option_post_install: true
+  pre_tasks:
+    - ansible.builtin.debug:
+        msg:
+          - "Actions to be performed:"
+          - "- Prepare Oracle Database installation files: {{ option_prepare_dbca }}"
+          - "- Copy Oracle instance binaries: {{ option_copy_oracle }}"
+          - "- Create container database: {{ option_create_cdb }}"
+          - "- Create pluggable database: {{ option_create_pdb }}"
+          - "- Post install tasks: {{ option_post_install }}"
+
+    - name: Grep for ORACLE_SID
+      command: "grep ^{{ oracle_sid }} /etc/oratab"
+      # command: "grep data2 /etc/oratab"
+      ignore_errors: true
+      register: grep_oratab
+
+    - name: Display var
+      debug:
+        var: grep_oratab
+
+    - name: Ending play if ORACLE_SID is defined
+      meta: end_play
+      when: grep_oratab.rc == 0
+
+
+
+  roles:
+    - role: parse_dbca
+      when: option_prepare_dbca == true
+    - role: create_cdb
+      when: option_create_cdb == true
+    - role: create_pdb
+      when: option_create_pdb == true
+    - role: post_install
+      remote_user: oracle
+...

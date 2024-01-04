@@ -1,0 +1,1 @@
+oracle_vm ansible_host=127.0.0.1 ansible_connection=ssh ansible_user=oracle ansible_ssh_pass= ansible_sudo_pass=

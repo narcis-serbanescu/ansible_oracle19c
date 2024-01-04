@@ -1,0 +1,28 @@
+---
+- name: Directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  loop:
+    - "{{ oracle_grid }}"
+    - "{{ grid_base }}"
+    - "{{ oracle_home }}"
+
+- name: Sync installation files
+  synchronize:
+    # src: "repo/{{ ora_grid }}"
+    src: "/home/snarcis/Downloads/Oracle/19c/oracle-database-preinstall-19c-1.0-1.el7.x86_64.rpm"
+    dest: "{{ temp_dir }}/oracle-database-preinstall-19c-1.0-1.el7.x86_64.rpm"
+
+- name: Install required packages
+  yum:
+    name: "{{ package_names }}"
+    state: present
+
+- name: Apply kernel parameters
+  shell: /sbin/sysctl -p /etc/sysctl.d/99-oracle-database-preinstall-19c-sysctl.conf
+...
+

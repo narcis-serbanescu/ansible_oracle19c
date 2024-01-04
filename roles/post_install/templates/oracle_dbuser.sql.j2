@@ -1,0 +1,11 @@
+alter session set "_oracle_script"=true;
+ALTER DATABASE OPEN;
+CREATE USER {{ oracle_dbuser }}
+  IDENTIFIED BY {{ oracle_dbpwd }}
+  DEFAULT TABLESPACE USERS
+  TEMPORARY TABLESPACE TEMP
+  QUOTA UNLIMITED ON USERS;
+GRANT CONNECT, RESOURCE to {{ oracle_dbuser }};
+GRANT UNLIMITED TABLESPACE TO {{ oracle_dbuser }};
+ALTER USER {{ oracle_dbuser }} DEFAULT ROLE ALL;
+

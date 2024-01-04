@@ -1,0 +1,36 @@
+---
+- name: Create oracle groups
+  group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ ora_groups }}"
+
+- name: Create oracle user
+  user:
+    name: "{{ oracle_user }}"
+    uid: "{{ oracle_uid }}"
+    append: true
+    group: "{{ oracle_group }}"
+    groups: "{{ item }}"
+  loop: "{{ ora_groups }}"
+
+- name: Deploy ssh_key
+  authorized_key:
+    user: oracle
+    state: present
+    key: "{{ lookup('file', '/home/snarcis/.ssh/id_rsa.pub') }}"
+    manage_dir: true
+
+- name: Directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  loop:
+    - "{{ oracle_grid }}"
+    - "{{ grid_base }}"
+    - "{{ oracle_home }}"
+    - "{{ dbfile_path }}"
+...

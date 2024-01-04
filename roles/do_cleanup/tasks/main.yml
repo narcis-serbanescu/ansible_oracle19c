@@ -1,0 +1,16 @@
+---
+# Cleanup after installation
+
+- name: Remove zip files
+  file:
+    path: "{{ temp_dir }}/{{ item.value }}"
+    state: absent
+  loop: "{{ oracle_files | dict2items }}"
+  become: true
+  
+#- name: Recursively remove directory /tmp/32545008
+#  ansible.builtin.file:
+#    path: /tmp/32545008
+#    state: absent
+
+...

@@ -1,0 +1,39 @@
+---
+
+- name: Uninstall Oracle 19c CDB and PDB
+  hosts: rhel79ora
+  remote_user: oracle
+  vars_files:
+    - ./vars/oracle_vars.yml
+
+  pre_tasks:
+
+    - name: Grep for ORACLE_SID
+      command: "grep ^{{ oracle_sid }} /etc/oratab"
+      ignore_errors: true
+      register: grep_oratab
+
+    - name: Display var
+      debug:
+        var: grep_oratab
+
+    - name: Ending play if ORACLE_SID is not defined
+      meta: end_play
+      when: grep_oratab.rc == 1
+
+  tasks:
+    - name: Remove CDB
+      # shell: dbca -silent -deleteDatabase -sourceDB t_cdb_10 -sysDBAUserName sys -sysDBAPassword Zaq12wsx -forceArchiveLogDeletion 
+      shell: "{{ oracle_home }}/bin/dbca -silent -deleteDatabase -sourceDB {{ oracle_sid }} -sysDBAUserName sys -sysDBAPassword {{ dbca.sysPassword }} -forceArchiveLogDeletion" 
+      ignore_errors: true
+
+    - name: Display log file
+      # shell: "cat {{ oracle_base }}/cfgtoollogs/dbca/{{ oracle_sid }}/{{ oracle_sid }}.log"
+      shell: "cat {{ oracle_base }}/cfgtoollogs/dbca/{{ oracle_sid }}/*"
+      register: log_file
+
+    - name: Display log file
+      debug:
+        var: log_file.stdout_lines
+
+...

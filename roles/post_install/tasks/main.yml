@@ -1,0 +1,13 @@
+---
+- name: Oracle environment
+  include_tasks: set_oraenv.yml
+
+- name: Oracle system prereq
+  include_tasks: start_oracle.yml
+
+- name: Oracle user settings
+  include_tasks: oracle_pdbuser.yml
+
+- name: Cleanup
+  include_tasks: cleanup_files.yml
+...

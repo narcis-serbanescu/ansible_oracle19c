@@ -1,0 +1,13 @@
+---
+- name: Post-install Oracle 19c
+  hosts: rhel79ora
+  remote_user: oracle
+  vars_files:
+    - ./vars/oracle_vars.yml
+  vars:
+    option_post_install: true
+  roles:
+    - role: post_install
+      when: option_post_install == true
+
+...

@@ -1,0 +1,5 @@
+alter session set "_oracle_script"=true;
+alter session set container={{ pdb_name }};
+alter pluggable database {{ pdb_name }} open;
+drop user {{ oracle_pdbuser }} cascade;
+

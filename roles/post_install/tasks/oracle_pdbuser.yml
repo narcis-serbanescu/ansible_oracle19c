@@ -1,0 +1,55 @@
+---
+- name: Deploy Create user SQL script
+  template:
+    src: oracle_pdbuser.sql.j2
+    dest: "{{ oracleuser_home }}/oracle_pdbuser.sql"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  
+- name: Deploy Drop user SQL script
+  template:
+    src: roles/post_install/templates/drop_oracle_pdbuser.sql.j2
+    dest: "{{ oracleuser_home }}/drop_oracle_pdbuser.sql"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  
+- name: List PDB users
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ cdb_name }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus sys/{{ syspass }}@{{ ansible_hostname }}:{{ portnum }}/{{ pdb_name }} as sysdba
+  register: ora_pdbusers
+  loop:
+    - 'select username from dba_users;'
+
+- name: Display existing PDB Oracle user status
+  debug:
+    var: ora_pdbusers
+  when: ora_pdbusers.results is not search(oracle_pdbuser)
+
+- name: New Oracle PDB user
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ cdb_name }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus sys/{{ syspass }}@{{ ansible_hostname }}:{{ portnum }}/{{ pdb_name }} as sysdba
+  loop:
+    - "@{{ oracleuser_home }}/oracle_pdbuser.sql;"
+  register: new_orauser
+  # when: oracle_pdbuser not in ora_pdbusers.results | map(attribute='stdout_lines')|list
+  when: ora_pdbusers.results is not search(oracle_pdbuser)
+
+- name: Display sql output
+  debug:
+    msg: "{{ new_orauser }}"
+
+- name: Connect as new Oracle user
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ cdb_name }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus {{ oracle_pdbuser }} as sysdba
+  register: ora_dbuser_conn
+  loop:
+    - '{{ oracle_pdbpwd }}";'
+
+- name: Run queries
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ cdb_name }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus {{ oracle_pdbuser }}/{{ oracle_pdbpwd }}@{{ ansible_hostname }}:1521/{{ pdb_name }} as sysdba
+  register: ora_pdbuser_conn
+  loop:
+    - 'select * from user_role_privs;'
+    - 'show pdbs;'
+
+- name: Display new Oracle PDB user status
+  debug:
+    var: ora_pdbuser_conn
+...

@@ -1,0 +1,36 @@
+---
+- name: Deploy Create user SQL script
+  template:
+    src: oracle_dbuser.sql.j2
+    dest: "{{ oracleuser_home }}/oracle_dbuser.sql"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  
+- name: Select Oracle user
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: ora_dbuser
+  loop:
+    - 'select username from dba_users;'
+
+- name: Display new Oracle user status
+  debug:
+    msg: "{{ item }}"
+  loop: "{{ ora_dbuser.results | map(attribute='stdout_lines')|list }}"
+  when: oracle_dbuser not in ora_dbuser.results | map(attribute='stdout_lines')|list
+
+- name: New Oracle user
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  loop:
+    - '@{{ oracleuser_home }}/oracle_dbuser.sql";'
+
+- name: Connect as new Oracle user
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus {{ oracle_dbuser }} as sysdba
+  register: ora_dbuser_conn
+  loop:
+    - '{{ oracle_dbpwd }}";'
+
+- name: Display new Oracle user status
+  debug:
+    var: ora_dbuser_conn
+
+...

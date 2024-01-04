@@ -1,0 +1,60 @@
+---
+- name: Sync installation files
+  synchronize:
+    # src: "repo/{{ ora_grid }}"
+    src: "/home/snarcis/Downloads/Oracle/19c/{{ ora_grid }}"
+    dest: "{{ temp_dir }}/{{ ora_grid }}"
+
+- name: mkdir for Oracle installation and set permissions
+  ansible.builtin.file:
+    path: "{{ oracle_grid }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+    state: directory
+  become: true
+
+- name: Unzip Oracle kit
+  ansible.builtin.unarchive:
+    src: "{{ temp_dir }}/{{ ora_grid }}"
+    dest: "{{ oracle_grid }}"
+    remote_src: true
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+
+- name: Copy files from OPatch to OPatch_org
+  copy:
+    src: "{{ oracle_grid }}/OPatch/"
+    dest: "{{ oracle_grid }}/OPatch_org"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    remote_src: true
+  become: true
+
+- name: Remove files from OPatch
+  file:
+    path: "{{ oracle_grid }}/OPatch"
+    state: absent
+  become_user: "{{ oracle_user }}"
+  become: true
+
+- name: Update owner on Oracle Grid
+  become_user: "{{ oracle_user }}"
+  file:
+    dest: "{{ oracle_grid }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+    recurse: true
+  become: true
+
+- name: Install Oracle Grid software only
+  become: true
+  become_user: "{{ oracle_user }}"
+  # remote_user: "{{ oracle_user }}"
+  shell: "{{ oracle_grid }}/runInstaller -ignorePrereqFailure -responseFile {{ oracleuser_home }}/db_auto.rsp -silent"
+  register: result
+  failed_when:
+    - result.rc != 0
+    - result.rc != 6
+...

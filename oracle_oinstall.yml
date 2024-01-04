@@ -1,0 +1,43 @@
+---
+- name: Test oracle belongs oinstall group and groups
+  hosts: rhel79ora
+  remote_user: oracle
+
+  tasks:
+    - name: oracle user
+      user:
+        name: oracle
+      register: oracle_user
+
+    - name: oinstall group
+      group:
+        name: oinstall
+      register: oinstall_group
+
+    - name: Display oracle_user
+      debug:
+        var: oracle_user
+
+    - name: Display oinstall_group
+      debug:
+        var: oinstall_group
+
+    - name: Run grep
+      command: grep -E oinstall.*oracle1 /etc/group
+      ignore_errors: true
+      register: grep_groups
+
+    - name: Assert that oracle belongs to oinstall as sec grp
+      assert:
+        that:
+          - grep_groups.rc == 0
+        fail_msg: "oracle does not belong to oinstall"
+        success_msg: "oracle does belong to oinstall"
+
+    - name: Display grep results
+      debug:
+        var: grep_groups.stdout
+      when: grep_groups.rc == 0
+
+
+...

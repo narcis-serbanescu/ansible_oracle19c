@@ -1,0 +1,25 @@
+---
+- name: Deploy oraenv script
+  template:
+    src: set_oraenv.sh.j2
+    dest: "{{ oracleuser_home }}/set_oraenv.sh"
+    owner: "{{ oracle_user }}"
+    mode: "0644"
+
+- name: Add oraenv script to bash_profile
+  lineinfile:
+    path: "{{ oracleuser_home }}/.bash_profile"
+    line: '. {{ oracleuser_home }}/set_oraenv.sh'
+
+- name: Directory structure
+  stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ oracle_home }}"
+    - "{{ dbfile_path }}"
+  register: ora_dirs
+
+- name: Display ORACLE_HOME and DB file path
+  debug:
+    msg: "{{ ora_dirs }}"
+...

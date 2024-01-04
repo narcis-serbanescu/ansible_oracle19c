@@ -1,0 +1,74 @@
+---
+# Start Listener, DB and PDB
+
+- name: Set sys password
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: ora_dbuser
+  loop:
+    - 'alter user sys identified by {{ syspass }};'
+
+- name: Restart DB
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus / as sysdba
+  register: sqlplus_start
+  loop:
+    - 'shutdown immediate;'
+    - 'startup;'
+    - 'alter pluggable database all open;'
+
+- name: Listener stop if already started
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; lsnrctl stop
+  # when: "listener.stdout is search('Listening Endpoints Summary')"
+  ignore_errors: true
+
+- name: Wait for listener port to close
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: "{{ portnum }}"
+    state: absent
+
+- name: Listener status
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; lsnrctl status
+  register: listener
+  ignore_errors: true
+
+- name: Listener start if closed
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; lsnrctl start
+  when: "listener.stdout is search('Connection refused')"
+  ignore_errors: true
+
+- name: Waiting for listener to start service
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ oracle_sid }}; export PATH=$PATH:$ORACLE_HOME/bin; lsnrctl status
+  register: listener_status
+  retries: 10
+  delay: 10
+  # until: "'taxud_pdb10' in listener_status.stdout"
+  until: pdb_name in listener_status.stdout
+
+- name: Wait for listener port
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: "{{ portnum }}"
+    # host: "{{ ansible_hostname }}"
+    active_connection_states:
+      - 'ESTABLISHED'
+      - 'SYN_SENT'
+      - 'SYN_RECV'
+
+- name: Display listener status
+  debug:
+    var: listener_status
+
+- name: Starting PDB
+  shell: export ORACLE_HOME={{ oracle_home }}; export ORACLE_SID={{ cdb_name }}; export PATH=$PATH:$ORACLE_HOME/bin; echo '{{ item }}' | {{ oracle_home }}/bin/sqlplus sys/{{ syspass }}@{{ ansible_hostname }}:{{ portnum }}/{{ pdb_name }} as sysdba
+  register: pdb_start
+  loop:
+    - 'alter session set container={{ pdb_name }};'
+    - 'alter pluggable database {{ pdb_name }} open;'
+    - 'show con_name;'
+    - 'show pdbs;'
+    - 'select name, open_mode, cdb from v$database;'
+
+- name: Display PDB status
+  debug:
+    msg: "{{ pdb_start }}"
+...

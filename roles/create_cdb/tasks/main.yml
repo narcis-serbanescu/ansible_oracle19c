@@ -1,0 +1,26 @@
+---
+# Create Oracle 19c container database
+
+- name: Validate if Oracle software is installed
+  stat:
+    path: "{{ oracle_home }}/bin/sqlplus"
+  register: sqlplus
+
+- name: Display path of Oracle software installation directory
+  debug:
+    msg: "Oracle database software is installed here: {{oracle_home }}"
+  when: sqlplus.stat.exists
+
+- name: If Oracle software is not installed we stop execution
+  fail:
+    msg: "Oracle database software is not installed here: {{oracle_home }}"
+  when: sqlplus.stat.exists == false
+
+#- name: Run listener
+#  become_user: "{{ oracle_user }}"
+#  remote_user: "{{ oracle_user }}"
+#  command: /bin/bash -c "{{ oracle_home }}/bin/lsnrctl start"
+
+- name: Create container database
+  shell: "{{ oracle_home }}/bin/dbca -createDatabase -silent -responseFile {{ oracleuser_home }}/dbca_auto.rsp"
+...

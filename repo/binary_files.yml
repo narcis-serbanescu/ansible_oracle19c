@@ -1,0 +1,5 @@
+---
+oracle: LINUX.X64_193000_db_home.zip
+patch1: p32545008_190000_Linux-x86-64.zip
+patch2: p6880880_190000_Linux-x86-64.zip
+...

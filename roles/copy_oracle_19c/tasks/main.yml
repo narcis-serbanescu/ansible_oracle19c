@@ -1,0 +1,77 @@
+---
+# Copy Oracle 19c install code and run home directory installation
+
+- name: Check if dbca and db response files were generated
+  fail:
+    msg: "The Oracle installation cannot continue until you enable option_prepare_dbca in main.yml."
+  when: option_prepare_dbca == false
+
+- name: Sync installation files
+  synchronize:
+    # src: "repo/{{ item.value }}"
+    src: "/home/snarcis/Downloads/Oracle/19c/{{ item.value }}"
+    dest: "{{ temp_dir }}/{{ item.value }}"
+  with_dict: "{{ oracle_files }}"
+
+- name: mkdir for Oracle installation and set permissions
+  ansible.builtin.file:
+    path: "{{ oracle_home }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+    state: directory
+
+- name: Unzip Oracle kit and patches
+  ansible.builtin.unarchive:
+    src: "{{ temp_dir }}/{{ item.value }}"
+    dest: "{{ oracle_home }}"
+    remote_src: true
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+  loop: "{{ oracle_files | dict2items }}"
+
+#- name: Unzip Oracle kit
+#  ansible.builtin.unarchive:
+#    # src: "{{ temp_dir }}/LINUX.X64_193000_db_home.zip"
+#    src: "{{ temp_dir }}/{{ oracle_files.ora_db }}"
+#    dest: "{{ oracle_home }}"
+#    remote_src: true
+#    owner: "{{ oracle_user }}"
+#    group: "{{ oracle_group }}"
+
+#- name: Copy files from OPatch to OPatch_org
+#  copy:
+#    src: "{{ oracle_home }}/OPatch/"
+#    dest: "{{ oracle_home }}/OPatch_org"
+#    owner: "{{ oracle_user }}"
+#    group: "{{ oracle_group }}"
+#    remote_src: true
+
+#- name: Remove files from OPatch
+#  file:
+#    path: "{{ oracle_home }}/OPatch"
+#    state: absent
+
+#- name: Remove zip files
+#  file:
+#    path: "{{ temp_dir }}/{{ item.value }}"
+#    state: absent
+#  loop: "{{ oracle_files | dict2items }}"
+#  become: true
+
+- name: Update owner on Oracle home
+  file:
+    dest: "{{ oracle_home }}"
+    owner: "{{ oracle_user }}"
+    group: "{{ oracle_group }}"
+    mode: "0755"
+    recurse: true
+
+- name: Install database software and patches
+  # remote_user: "{{ oracle_user }}"
+  shell: "{{ oracle_home }}/runInstaller -ignorePrereqFailure -applyRU {{ oracle_home }}/32545008 -responseFile {{ oracleuser_home }}/db_auto.rsp -silent"
+  register: result
+  failed_when:
+    - result.rc != 0
+    - result.rc != 6
+...

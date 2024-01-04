@@ -1,0 +1,7 @@
+---
+- name: Run orainstRoot.sh
+  shell: "{{ db['INVENTORY_LOCATION'] }}/orainstRoot.sh"
+
+- name: Run root.sh script
+  shell: "{{ oracle_home }}/root.sh"
+...
